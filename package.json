@@ -1,0 +1,25 @@
+{
+  "name": "im",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "node server/index.mjs",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
+    "preview": "vite preview",
+    "test:sites": "node --test tests/sites-worker.test.mjs"
+  },
+  "dependencies": {
+    "@iconify-icons/ri": "^2.0.0",
+    "@iconify/react": "^6.0.2",
+    "@tencentcloud/chat": "^3.6.7",
+    "@vitejs/plugin-react": "5.0.4",
+    "dotenv": "^17.4.2",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "tim-upload-plugin": "^1.4.3",
+    "tls-sig-api-v2": "^1.0.2",
+    "vite": "6.4.3"
+  }
+}
