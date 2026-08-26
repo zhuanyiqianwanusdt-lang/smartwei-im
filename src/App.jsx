@@ -43,7 +43,7 @@ const nowTime = () => new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", 
 function Sidebar({ activeView, onSelect }) {
   return <aside className="sidebar">
     <div className="brand"><div className="brand-mark"><Icon icon={serviceIcon} /></div><div><b>智慧微</b><span>客服工作台</span></div></div>
-    <div className="workspace"><i /><div><b>演示企业</b><span>在线 · 腾讯 IM</span></div><Icon icon={moreIcon} /></div>
+    
     <nav>
       {navGroups.map(([label, items]) => <section key={label}><p>{label}</p>{items.map(([id, text, icon, badge]) =>
         <button key={id} type="button" className={activeView === id ? "active" : ""} onClick={() => onSelect(id)}>
@@ -126,7 +126,7 @@ function ConnectModal({ onClose, onConnect }) {
 
 function Placeholder({ view, onBack }) {
   const labels = Object.fromEntries(navGroups.flatMap(([, items]) => items.map(([id, label]) => [id, label])));
-  return <main className="placeholder"><div><Icon icon={settingsIcon} /></div><span>智慧微独立项目</span><h1>{labels[view]}</h1><p>该模块已进入独立功能边界，当前优先完成客服主链路。</p><button className="primary" type="button" onClick={onBack}>返回联系人工作台</button></main>;
+  return <main className="placeholder"><div><Icon icon={settingsIcon} /></div><span>功能开发中</span><h1>{labels[view]}</h1><p>该模块已进入独立功能边界，当前优先完成客服主链路。</p><button className="primary" type="button" onClick={onBack}>返回联系人工作台</button></main>;
 }
 
 export function App() {
