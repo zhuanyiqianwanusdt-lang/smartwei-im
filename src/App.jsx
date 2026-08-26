@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import serviceIcon from "@iconify-icons/ri/customer-service-2-line";
 import contactsIcon from "@iconify-icons/ri/contacts-book-2-line";
@@ -28,41 +28,7 @@ import checkIcon from "@iconify-icons/ri/checkbox-circle-fill";
 import bellIcon from "@iconify-icons/ri/notification-3-line";
 import { connectTencentIm, requestImSession } from "./tencent-im.js";
 
-const initialContacts = [
-  {
-    id: "c-001", name: "陈女士", code: "ZH-0825-001", preview: "请问这个套餐可以多人一起用吗？", time: "13:42", unread: 2,
-    status: "active", remaining: "23h 18m", quota: "8/10 条", tags: ["重点客户", "新咨询"], source: "官网咨询入口",
-    note: "关注团队协作和多客服接待，优先介绍企业版。",
-    messages: [
-      { id: 1, side: "in", type: "text", content: "你好，我想了解一下你们的客服系统。", time: "13:38" },
-      { id: 2, side: "out", type: "text", content: "您好，欢迎咨询智慧微。请问您主要想解决单客服接待，还是团队协作场景？", time: "13:39", state: "已读" },
-      { id: 3, side: "in", type: "text", content: "请问这个套餐可以多人一起用吗？", time: "13:42" },
-    ],
-  },
-  {
-    id: "c-002", name: "周先生", code: "ZH-0825-002", preview: "能接到我们自己的 App 里吗", time: "13:27", unread: 1,
-    status: "active", remaining: "22h 57m", quota: "6/10 条", tags: ["技术咨询"], source: "扫码添加",
-    note: "已有自研 App，关心 SDK 和消息回调。",
-    messages: [{ id: 1, side: "in", type: "text", content: "能接到我们自己的 App 里吗？", time: "13:27" }],
-  },
-  {
-    id: "c-003", name: "李经理", code: "ZH-0825-003", preview: "收到，我晚点整理需求", time: "12:56", unread: 0,
-    status: "active", remaining: "22h 26m", quota: "4/10 条", tags: ["已报价"], source: "客户转介绍",
-    note: "已发送企业版报价，明天下午跟进。",
-    messages: [
-      { id: 1, side: "out", type: "text", content: "企业版支持多坐席、自动分配和会话数据报表。", time: "12:51", state: "已读" },
-      { id: 2, side: "in", type: "text", content: "收到，我晚点整理需求。", time: "12:56" },
-    ],
-  },
-  {
-    id: "c-004", name: "访客 7086", code: "ZH-0825-004", preview: "会话已结束", time: "11:08", unread: 0,
-    status: "closed", remaining: "已关闭", quota: "10/10 条", tags: ["已结束"], source: "落地页", note: "咨询结束，无需再次跟进。",
-    messages: [
-      { id: 1, side: "in", type: "text", content: "好的，谢谢。", time: "11:07" },
-      { id: 2, side: "out", type: "voice", content: "语音消息", duration: "0:03", time: "11:08", state: "已读" },
-    ],
-  },
-];
+const initialContacts = [];
 
 const navGroups = [
   ["日常", [["contacts", "联系人", contactsIcon, 3], ["today", "今天该找谁", chatIcon], ["queue", "发送队列", queueIcon]]],
@@ -164,10 +130,11 @@ function Placeholder({ view, onBack }) {
 }
 
 export function App() {
-  const [contacts, setContacts] = useState(initialContacts); const [selectedId, setSelectedId] = useState(initialContacts[0].id); const [view, setView] = useState("contacts");
+  const [contacts, setContacts] = useState(initialContacts); const [selectedId, setSelectedId] = useState(""); const [view, setView] = useState("contacts");
   const [search, setSearch] = useState(""); const [filter, setFilter] = useState("all"); const [draft, setDraft] = useState(""); const [showAi, setShowAi] = useState(false);
-  const [profile, setProfile] = useState(false); const [modal, setModal] = useState(""); const [blockedIds, setBlockedIds] = useState([]); const [toast, setToast] = useState(""); const [imStatus, setImStatus] = useState("demo"); const imClient = useRef(null);
-  const selected = useMemo(() => contacts.find(c => c.id === selectedId) || contacts[0], [contacts, selectedId]); const blocked = blockedIds.includes(selected.id); const disabled = blocked || selected.status === "closed";
+  const [profile, setProfile] = useState(false); const [modal, setModal] = useState("connect"); const [blockedIds, setBlockedIds] = useState([]); const [toast, setToast] = useState(""); const [imStatus, setImStatus] = useState("offline"); const imClient = useRef(null);
+  const selected = useMemo(() => contacts.find(c => c.id === selectedId) || contacts[0] || null, [contacts, selectedId]);
+  const blocked = selected ? blockedIds.includes(selected.id) : false; const disabled = !selected || blocked || selected.status === "closed";
   const notify = message => { setToast(message); window.setTimeout(() => setToast(""), 2500); };
   const append = message => setContacts(list => list.map(c => c.id === selected.id ? { ...c, preview: message.content, time: message.time || "计划", messages: [...c.messages, message] } : c));
   const send = async () => { const content = draft.trim(); if (!content || disabled) return; try { if (imStatus === "connected" && selected.imUserId) await imClient.current.sendText(selected.imUserId, content); append({ id: Date.now(), side: "out", type: "text", content, time: nowTime(), state: imStatus === "connected" ? "已送达" : "演示" }); setDraft(""); setShowAi(false); } catch { notify("消息发送失败，请检查 IM 连接"); } };
@@ -201,15 +168,15 @@ export function App() {
   return <div className="app-shell">
     <Sidebar activeView={view} onSelect={setView} />
     {view !== "contacts" ? <Placeholder view={view} onBack={() => setView("contacts")} /> : <>
-      <ConversationList contacts={contacts} selectedId={selected.id} onSelect={id => { setSelectedId(id); setProfile(false); setDraft(""); }} search={search} setSearch={setSearch} filter={filter} setFilter={setFilter} onAdd={() => setModal("add")} />
-      <main className="chat-panel"><ChatHeader contact={selected} blocked={blocked} onArchive={() => setProfile(true)} onBlock={() => { setBlockedIds(ids => blocked ? ids.filter(id => id !== selected.id) : [...ids, selected.id]); notify(blocked ? "已恢复该联系人" : "已拉黑该联系人"); }} />
+      <ConversationList contacts={contacts} selectedId={selected?.id} onSelect={id => { setSelectedId(id); setProfile(false); setDraft(""); }} search={search} setSearch={setSearch} filter={filter} setFilter={setFilter} onAdd={() => setModal("add")} />
+      {selected ? <main className="chat-panel"><ChatHeader contact={selected} blocked={blocked} onArchive={() => setProfile(true)} onBlock={() => { setBlockedIds(ids => blocked ? ids.filter(id => id !== selected.id) : [...ids, selected.id]); notify(blocked ? "已恢复该联系人" : "已拉黑该联系人"); }} />
         <div className="translation"><Icon icon={translateIcon} /><span>这位客户的消息将保留原文</span><button type="button" onClick={() => notify("已开启中英双语辅助")}>开启翻译</button></div>
         <section className="message-stream"><div className="date"><span>今天</span></div>{selected.messages.length ? selected.messages.map(m => <Message message={m} key={m.id} />) : <div className="empty chat-empty"><Icon icon={chatIcon} /><b>开始一段新会话</b><span>从下面输入第一条消息</span></div>}{disabled && <div className="closed-notice">{blocked ? "该联系人已拉黑，恢复后才能继续发送" : "会话已结束，双方防发第一条消息才可继续"}</div>}</section>
         <Composer disabled={disabled} draft={draft} setDraft={setDraft} onSend={send} onFile={attach} onVoice={() => { append({ id: Date.now(), side: "out", type: "voice", content: "语音消息", duration: "0:03", time: nowTime(), state: "已送达" }); notify("录音已发送"); }} showAi={showAi} setShowAi={setShowAi} onSchedule={() => setModal("schedule")} onExport={exportChat} notify={notify} />
-      </main>
-      {profile && <Profile key={selected.id} contact={selected} onClose={() => setProfile(false)} onSave={note => { setContacts(list => list.map(c => c.id === selected.id ? { ...c, note } : c)); setProfile(false); notify("客户档案已保存"); }} />}
+      </main> : <main className="chat-panel"><div className="empty chat-empty" style={{margin:"auto",padding:"4rem"}}><Icon icon={chatIcon} /><b>{imStatus === "connected" ? "选择一个会话" : "请先登录"}</b><span>{imStatus === "connected" ? "从左侧选择联系人开始聊天" : "点击右上角连接 IM 登录客服账号"}</span></div></main>}
+      {profile && selected && <Profile key={selected.id} contact={selected} onClose={() => setProfile(false)} onSave={note => { setContacts(list => list.map(c => c.id === selected.id ? { ...c, note } : c)); setProfile(false); notify("客户档案已保存"); }} />}
     </>}
-    <div className={`topbar ${imStatus}`}><span><i />{imStatus === "connected" ? "腾讯 IM 已连接" : imStatus === "connecting" ? "腾讯 IM 连接中" : "腾讯 IM 安全演示"}</span><button type="button" onClick={() => setModal("connect")}>{imStatus === "connected" ? "重新登录" : "连接真实 IM"}</button><Icon icon={bellIcon} /></div>
+    <div className={`topbar ${imStatus}`}><span><i />{imStatus === "connected" ? "腾讯 IM 已连接" : imStatus === "connecting" ? "腾讯 IM 连接中" : "腾讯 IM 未连接"}</span><button type="button" onClick={() => setModal("connect")}>{imStatus === "connected" ? "重新登录" : "连接 IM"}</button><Icon icon={bellIcon} /></div>
     {modal === "connect" ? <ConnectModal onClose={() => setModal("")} onConnect={connect} /> : modal && <Modal type={modal} onClose={() => setModal("")} onCreate={data => { if (modal === "add") addContact(data.name); else { append({ id: Date.now(), side: "system", type: "notice", content: `已创建 ${data.date} ${data.time} 的定时消息：${data.content}` }); setModal(""); notify("定时发送计划已创建"); } }} />}
     {toast && <div className="toast"><Icon icon={checkIcon} />{toast}</div>}
   </div>;
